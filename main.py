@@ -1,12 +1,19 @@
 import streamlit as st
 import math
+import random
+import pandas as pd
+import plotly.express as px
 
 # 페이지 기본 설정
-st.set_page_config(page_title="다기능 계산기", page_icon="🧮")
+st.set_page_config(page_title="다기능 웹앱", page_icon="🧮")
 
-def main():
+
+# -----------------------------
+# 1. 계산기 앱
+# -----------------------------
+def calculator_app():
     st.title("🧮 다기능 계산기")
-    st.write("사칙연산, 모듈러, 지수, 로그 연산을 지원하는 간단 웹 계산기입니다.")
+    st.write("사칙연산, 모듈러, 지수, 로그 연산을 지원하는 웹 계산기입니다.")
 
     # 연산 선택
     operation = st.selectbox(
@@ -85,9 +92,95 @@ def main():
         if result is not None:
             st.success(f"결과: {result}")
 
-    # 하단 안내
-    st.markdown("---")
-    st.caption("Powered by Streamlit & Python · 깃허브에 이 파일을 그대로 업로드하면 됩니다.")
+
+# -----------------------------
+# 2. 확률 시뮬레이터 앱
+# -----------------------------
+def probability_simulator_app():
+    st.title("🎲 확률 시뮬레이터")
+    st.write("동전/주사위를 여러 번 던져 보고, 실제 결과 분포를 그래프로 확인해 보세요.")
+
+    exp_type = st.selectbox("실험 종류를 선택하세요", ("동전 던지기", "주사위 던지기"))
+    n_trials = st.number_input(
+        "시행 횟수(양의 정수)",
+        min_value=1,
+        max_value=100_000,
+        value=1_000,
+        step=1,
+    )
+
+    if st.button("시뮬레이션 실행"):
+        n_trials = int(n_trials)
+
+        # 시뮬레이션 실행
+        if exp_type == "동전 던지기":
+            outcomes = [random.choice(["앞면", "뒷면"]) for _ in range(n_trials)]
+            labels = ["앞면", "뒷면"]  # 이 순서대로 그래프에 표시
+        else:  # 주사위 던지기
+            outcomes = [random.randint(1, 6) for _ in range(n_trials)]
+            labels = [1, 2, 3, 4, 5, 6]
+
+        # 결과 집계
+        counts = {label: 0 for label in labels}
+        for o in outcomes:
+            counts[o] += 1
+
+        # 데이터프레임 생성
+        df = pd.DataFrame(
+            {
+                "결과": [str(l) for l in labels],
+                "횟수": [counts[l] for l in labels],
+            }
+        )
+        df["상대도수"] = df["횟수"] / n_trials
+
+        st.subheader("📊 결과 요약")
+        st.dataframe(df, use_container_width=True)
+
+        # 막대그래프 (횟수 기준)
+        fig = px.bar(
+            df,
+            x="결과",
+            y="횟수",
+            text="횟수",
+            title=f"{exp_type} 시뮬레이션 결과 분포 (시행 {n_trials}회)",
+        )
+        fig.update_traces(textposition="outside")
+        fig.update_layout(yaxis_title="횟수")
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # 상대도수 그래프도 보고 싶을 수 있으니 옵션 제공
+        with st.expander("상대도수(확률) 그래프 보기"):
+            fig_rel = px.bar(
+                df,
+                x="결과",
+                y="상대도수",
+                text="상대도수",
+                title=f"{exp_type} 상대도수 분포 (시행 {n_trials}회)",
+            )
+            fig_rel.update_traces(texttemplate="%{text:.3f}", textposition="outside")
+            fig_rel.update_layout(yaxis_title="상대도수")
+            st.plotly_chart(fig_rel, use_container_width=True)
+
+
+# -----------------------------
+# 3. 메인 함수: 사이드바에서 앱 선택
+# -----------------------------
+def main():
+    st.sidebar.title("🔧 앱 선택")
+    app_choice = st.sidebar.radio(
+        "사용할 기능을 선택하세요",
+        ("계산기", "확률 시뮬레이터"),
+    )
+
+    if app_choice == "계산기":
+        calculator_app()
+    else:
+        probability_simulator_app()
+
+    st.sidebar.markdown("---")
+    st.sidebar.caption("Powered by Streamlit · main.py로 실행")
 
 
 if __name__ == "__main__":
